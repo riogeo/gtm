@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus — Enterprise Relationship Intelligence</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080c10;
+    --surface: #0e1419;
+    --surface2: #141c24;
+    --border: rgba(255,255,255,0.07);
+    --border-active: rgba(99,179,237,0.4);
+    --text: #e8edf2;
+    --text-muted: #5a6a7a;
+    --text-dim: #8a9bac;
+    --accent: #63b3ed;
+    --accent2: #4fd1c5;
+    --accent3: #f6ad55;
+    --red: #fc8181;
+    --green: #68d391;
+    --purple: #b794f4;
+    --glow: rgba(99,179,237,0.15);
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+  }
+
+  body { display: flex; flex-direction: column; }
+
+  /* ── HEADER ── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 20px; height: 50px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0; z-index: 100;
+  }
+  .logo {
+    font-family: 'Syne', sans-serif; font-weight: 800;
+    font-size: 15px; letter-spacing: 0.1em; color: var(--accent);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .logo-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+
+  .header-center {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 5px 10px;
+  }
+  .deal-tag { font-family:'DM Mono',monospace; font-size:10px; color:var(--text-muted); }
+  .deal-name { font-size:13px; font-weight:500; }
+  .deal-stage {
+    font-family:'DM Mono',monospace; font-size:10px;
+    background:rgba(99,179,237,0.1); color:var(--accent);
+    border:1px solid rgba(99,179,237,0.2); border-radius:3px; padding:2px 7px;
+  }
+  .header-right { display:flex; align-items:center; gap:14px; }
+  .score-chip { display:flex; align-items:center; gap:6px; font-family:'DM Mono',monospace; font-size:11px; }
+  .score-label { color:var(--text-muted); }
+  .score-value { color:var(--accent3); font-size:15px; font-weight:500; }
+
+  .view-toggle {
+    display:flex; background:var(--bg); border:1px solid var(--border);
+    border-radius:6px; padding:3px; gap:2px;
+  }
+  .toggle-btn {
+    display:flex; align-items:center; gap:6px; padding:5px 12px;
+    border:none; background:transparent; color:var(--text-muted);
+    font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.06em;
+    border-radius:4px; cursor:pointer; transition:all .2s;
+  }
+  .toggle-btn.active {
+    background:var(--surface2); color:var(--accent);
+    border:1px solid var(--border-active); box-shadow:0 0 12px var(--glow);
+  }
+  .toggle-btn svg { width:13px; height:13px; }
+
+  /* ── LAYOUT ── */
+  .main { display:flex; flex:1; overflow:hidden; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width:232px; border-right:1px solid var(--border);
+    background:var(--surface); display:flex; flex-direction:column;
+    flex-shrink:0; overflow-y:auto;
+  }
+  .sidebar-section { border-bottom:1px solid var(--border); padding:14px; }
+  .sidebar-label {
+    font-family:'DM Mono',monospace; font-size:9px; letter-spacing:.12em;
+    color:var(--text-muted); text-transform:uppercase; margin-bottom:10px;
+  }
+  .contact-item {
+    display:flex; align-items:center; gap:9px; padding:7px 8px;
+    border-radius:6px; cursor:pointer; transition:background .15s;
+    margin-bottom:3px; border:1px solid transparent;
+  }
+  .contact-item:hover { background:var(--surface2); }
+  .contact-item.selected { background:var(--surface2); border-color:var(--border-active); }
+  .avatar {
+    width:26px; height:26px; border-radius:50%; display:flex;
+    align-items:center; justify-content:center; font-family:'Syne',sans-serif;
+    font-size:10px; font-weight:700; flex-shrink:0;
+  }
+  .contact-info { flex:1; min-width:0; }
+  .contact-name { font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .contact-role { font-family:'DM Mono',monospace; font-size:9px; color:var(--text-muted); margin-top:1px; }
+  .sentiment-bar { width:3px; height:26px; border-radius:2px; flex-shrink:0; }
+
+  /* ── CANVAS ── */
+  .canvas-area { flex:1; position:relative; overflow:hidden; }
+  .view-panel { position:absolute; inset:0; opacity:0; pointer-events:none; transition:opacity .35s ease; }
+  .view-panel.active { opacity:1; pointer-events:all; }
+
+  /* ── ORG VIEW ── */
+  #org-view { overflow:auto; display:flex; justify-content:center; padding:28px 32px; }
+  .org-wrap { position:relative; width:820px; height:500px; flex-shrink:0; }
+  svg.org-lines { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .org-node {
+    position:absolute; transform:translateX(-50%); cursor:pointer;
+  }
+  .org-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:10px; padding:10px 12px; width:148px;
+    transition:all .2s; position:relative; overflow:hidden;
+  }
+  .org-card:hover, .org-node.sel .org-card {
+    border-color:var(--border-active);
+    box-shadow:0 0 18px var(--glow), 0 4px 16px rgba(0,0,0,.4);
+    transform:translateY(-2px);
+  }
+  .org-name { font-size:12px; font-weight:500; margin-bottom:3px; }
+  .org-title { font-family:'DM Mono',monospace; font-size:9px; color:var(--text-muted); margin-bottom:7px; line-height:1.4; }
+  .org-metrics { display:flex; gap:5px; }
+  .heat-bar { width:100%; height:3px; border-radius:2px; margin-top:7px; background:var(--surface2); overflow:hidden; display:none; }
+  .heat-fill { height:100%; border-radius:2px; }
+  .metric-pill {
+    font-family:'DM Mono',monospace; font-size:9px; padding:2px 6px;
+    border-radius:3px; display:flex; align-items:center; gap:3px;
+  }
+
+  /* ── GRAPH VIEW ── */
+  #graph-view { background: var(--bg); }
+  #graph-svg {
+    width:100%; height:100%;
+    cursor:grab;
+  }
+  #graph-svg:active { cursor:grabbing; }
+
+  /* ── OVERLAY CONTROLS ── */
+  .overlay-controls {
+    position:absolute; top:16px; left:16px;
+    display:flex; flex-direction:column; gap:5px; z-index:50;
+  }
+  .overlay-btn {
+    display:flex; align-items:center; gap:7px; padding:5px 11px;
+    background:rgba(14,20,25,0.85); backdrop-filter:blur(8px);
+    border:1px solid var(--border); border-radius:5px;
+    color:var(--text-muted); font-family:'DM Mono',monospace;
+    font-size:10px; cursor:pointer; transition:all .2s; letter-spacing:.05em;
+  }
+  .overlay-btn.active {
+    border-color:var(--border-active); color:var(--accent);
+    background:rgba(14,20,25,0.95); box-shadow:0 0 8px var(--glow);
+  }
+  .overlay-indicator { width:8px; height:8px; border-radius:50%; background:currentColor; opacity:.7; }
+
+  /* ── PIVOT BUTTON ── */
+  .pivot-btn {
+    position:absolute; top:16px; right:16px; z-index:50;
+    display:flex; align-items:center; gap:7px; padding:7px 14px;
+    background:rgba(14,20,25,0.9); backdrop-filter:blur(8px);
+    border:1px solid var(--border-active); border-radius:6px;
+    color:var(--accent); font-family:'DM Mono',monospace;
+    font-size:10px; letter-spacing:.06em; cursor:pointer;
+    transition:all .2s; box-shadow:0 0 14px var(--glow);
+  }
+  .pivot-btn:hover { background:var(--surface2); box-shadow:0 0 22px rgba(99,179,237,.25); }
+
+  /* ── DETAIL PANEL ── */
+  .detail-panel {
+    position:absolute; bottom:16px; right:16px; width:290px;
+    background:rgba(14,20,25,0.92); backdrop-filter:blur(12px);
+    border:1px solid var(--border); border-radius:10px; padding:15px; z-index:50;
+    transition:opacity .2s;
+  }
+  .detail-header { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .detail-avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:700; font-size:13px; flex-shrink:0; }
+  .detail-name { font-size:13px; font-weight:500; }
+  .detail-role { font-family:'DM Mono',monospace; font-size:9px; color:var(--text-muted); margin-top:1px; }
+  .detail-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:7px; padding-bottom:7px; border-bottom:1px solid var(--border); }
+  .detail-row:last-child { margin-bottom:0; padding-bottom:0; border-bottom:none; }
+  .detail-key { font-family:'DM Mono',monospace; font-size:10px; color:var(--text-muted); }
+  .detail-val { font-family:'DM Mono',monospace; font-size:11px; font-weight:500; }
+  .detail-bar { width:80px; height:4px; border-radius:2px; background:var(--surface2); overflow:hidden; }
+  .detail-bar-fill { height:100%; border-radius:2px; }
+
+  /* ── INSIGHT PANEL ── */
+  .insight-panel {
+    position:absolute; bottom:16px; left:16px; width:280px;
+    background:rgba(14,20,25,0.92); backdrop-filter:blur(12px);
+    border:1px solid var(--border); border-radius:10px; padding:14px; z-index:50;
+  }
+  .insight-header { display:flex; align-items:center; gap:7px; margin-bottom:10px; }
+  .insight-dot { width:6px; height:6px; border-radius:50%; background:var(--accent3); box-shadow:0 0 6px var(--accent3); }
+  .insight-title { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:.1em; color:var(--text-muted); text-transform:uppercase; }
+  .insight-item { display:flex; gap:9px; padding:7px 0; border-bottom:1px solid var(--border); font-size:11px; line-height:1.5; color:var(--text-dim); }
+  .insight-item:last-child { border-bottom:none; padding-bottom:0; }
+  .insight-icon { font-size:13px; flex-shrink:0; margin-top:1px; }
+
+  /* ── LEGEND ── */
+  .legend {
+    position:absolute; top:70px; right:16px;
+    background:rgba(14,20,25,0.88); backdrop-filter:blur(8px);
+    border:1px solid var(--border); border-radius:8px; padding:12px 14px; z-index:50;
+  }
+  .legend-title { font-family:'DM Mono',monospace; font-size:9px; color:var(--text-muted); letter-spacing:.1em; text-transform:uppercase; margin-bottom:7px; }
+  .legend-item { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text-dim); margin-bottom:4px; }
+  .legend-item:last-child { margin-bottom:0; }
+  .legend-line { width:20px; border-radius:2px; }
+  .legend-dot { width:10px; height:10px; border-radius:50%; border:2px solid; flex-shrink:0; }
+
+  /* ── STATUS BAR ── */
+  .status-bar {
+    height:26px; background:var(--surface); border-top:1px solid var(--border);
+    display:flex; align-items:center; padding:0 14px; gap:18px; flex-shrink:0;
+  }
+  .status-item { display:flex; align-items:center; gap:5px; font-family:'DM Mono',monospace; font-size:10px; color:var(--text-muted); }
+  .status-dot { width:5px; height:5px; border-radius:50%; }
+
+  /* ── PATH HIGHLIGHT ── */
+  .path-label {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-family:'DM Mono',monospace; font-size:10px; color:var(--accent);
+    background:rgba(99,179,237,0.1); border:1px solid var(--border-active);
+    border-radius:4px; padding:3px 8px; pointer-events:none; opacity:0;
+    transition:opacity .3s; z-index:60;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><div class="logo-dot"></div>NEXUS</div>
+
+  <div class="header-center">
+    <span class="deal-tag">DEAL /</span>
+    <span class="deal-name">Meridian Financial — Cloud Security Suite</span>
+    <span class="deal-stage">STAGE 3 · VALIDATION</span>
+  </div>
+
+  <div class="header-right">
+    <div class="score-chip">
+      <span class="score-label">DEAL SCORE</span>
+      <span class="score-value">67</span>
+    </div>
+    <div class="view-toggle">
+      <button class="toggle-btn active" id="btn-org" onclick="switchView('org')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="5.5" y="1" width="5" height="3" rx=".5"/>
+          <rect x="1" y="10" width="4" height="3" rx=".5"/>
+          <rect x="6" y="10" width="4" height="3" rx=".5"/>
+          <rect x="11" y="10" width="4" height="3" rx=".5"/>
+          <line x1="8" y1="4" x2="8" y2="7"/>
+          <line x1="3" y1="7" x2="13" y2="7"/>
+          <line x1="3" y1="7" x2="3" y2="10"/>
+          <line x1="8" y1="7" x2="8" y2="10"/>
+          <line x1="13" y1="7" x2="13" y2="10"/>
+        </svg>
+        HIERARCHY
+      </button>
+      <button class="toggle-btn" id="btn-graph" onclick="switchView('graph')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="2"/>
+          <circle cx="2" cy="3" r="1.5"/><circle cx="14" cy="3" r="1.5"/>
+          <circle cx="2" cy="13" r="1.5"/><circle cx="14" cy="13" r="1.5"/>
+          <line x1="3.1" y1="4.1" x2="6.6" y2="6.6"/>
+          <line x1="12.9" y1="4.1" x2="9.4" y2="6.6"/>
+          <line x1="3.1" y1="11.9" x2="6.6" y2="9.4"/>
+          <line x1="12.9" y1="11.9" x2="9.4" y2="9.4"/>
+        </svg>
+        GRAPH
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Stakeholders · 7</div>
+      <div class="contact-item selected" id="si-sarah" onclick="focusNode('sarah')">
+        <div class="avatar" style="background:rgba(246,173,85,.15);color:#f6ad55;">SM</div>
+        <div class="contact-info"><div class="contact-name">Sarah Mwangi</div><div class="contact-role">ECONOMIC BUYER</div></div>
+        <div class="sentiment-bar" style="background:linear-gradient(#68d391,#48bb78)"></div>
+      </div>
+      <div class="contact-item" id="si-james" onclick="focusNode('james')">
+        <div class="avatar" style="background:rgba(99,179,237,.15);color:#63b3ed;">JT</div>
+        <div class="contact-info"><div class="contact-name">James Thornton</div><div class="contact-role">CHAMPION</div></div>
+        <div class="sentiment-bar" style="background:linear-gradient(#68d391,#48bb78)"></div>
+      </div>
+      <div class="contact-item" id="si-priya" onclick="focusNode('priya')">
+        <div class="avatar" style="background:rgba(183,148,244,.15);color:#b794f4;">PK</div>
+        <div class="contact-info"><div class="contact-name">Priya Kapoor</div><div class="contact-role">TECH EVALUATOR</div></div>
+        <div class="sentiment-bar" style="background:linear-gradient(#f6ad55,#ed8936)"></div>
+      </div>
+      <div class="contact-item" id="si-david" onclick="focusNode('david')">
+        <div class="avatar" style="background:rgba(252,129,129,.15);color:#fc8181;">DH</div>
+        <div class="contact-info"><div class="contact-name">David Hartmann</div><div class="contact-role">BLOCKER</div></div>
+        <div class="sentiment-bar" style="background:linear-gradient(#fc8181,#e53e3e)"></div>
+      </div>
+      <div class="contact-item" id="si-nina" onclick="focusNode('nina')">
+        <div class="avatar" style="background:rgba(79,209,197,.15);color:#4fd1c5;">NR</div>
+        <div class="contact-info"><div class="contact-name">Nina Rossi</div><div class="contact-role">COACH</div></div>
+        <div class="sentiment-bar" style="background:linear-gradient(#68d391,#48bb78)"></div>
+      </div>
+      <div class="contact-item" id="si-mike" onclick="focusNode('mike')">
+        <div class="avatar" style="background:rgba(255,255,255,.06);color:#8a9bac;">MC</div>
+        <div class="contact-info"><div class="contact-name">Mike Chen</div><div class="contact-role">LEGAL</div></div>
+        <div class="sentiment-bar" style="background:#2d3748"></div>
+      </div>
+      <div class="contact-item" id="si-elena" onclick="focusNode('elena')">
+        <div class="avatar" style="background:rgba(255,255,255,.06);color:#8a9bac;">EV</div>
+        <div class="contact-info"><div class="contact-name">Elena Vasquez</div><div class="contact-role">PROCUREMENT</div></div>
+        <div class="sentiment-bar" style="background:#2d3748"></div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Coverage Gaps</div>
+      <div style="font-size:12px;color:var(--red);display:flex;align-items:center;gap:6px;margin-bottom:6px;cursor:pointer;" onclick="focusNode('cfo')">⚠ CFO — No contact</div>
+      <div style="font-size:12px;color:var(--accent3);display:flex;align-items:center;gap:6px;margin-bottom:6px;">⚡ Board Sponsor — 1 hop</div>
+      <div style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;">○ Risk Committee — Unknown</div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Relationship Score</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-muted)">BREADTH</span>
+            <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent)">71%</span>
+          </div>
+          <div style="height:3px;background:var(--surface2);border-radius:2px;overflow:hidden;"><div style="height:100%;width:71%;background:var(--accent);border-radius:2px"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-muted)">DEPTH</span>
+            <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent2)">58%</span>
+          </div>
+          <div style="height:3px;background:var(--surface2);border-radius:2px;overflow:hidden;"><div style="height:100%;width:58%;background:var(--accent2);border-radius:2px"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-muted)">EXEC ACCESS</span>
+            <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--red)">33%</span>
+          </div>
+          <div style="height:3px;background:var(--surface2);border-radius:2px;overflow:hidden;"><div style="height:100%;width:33%;background:var(--red);border-radius:2px"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CANVAS AREA -->
+  <div class="canvas-area">
+
+    <!-- ORG VIEW -->
+    <div class="view-panel active" id="org-view">
+      <div class="overlay-controls">
+        <button class="overlay-btn active" id="ov-sentiment" onclick="toggleOrgOverlay('sentiment')"><span class="overlay-indicator"></span>SENTIMENT</button>
+        <button class="overlay-btn" id="ov-heat" onclick="toggleOrgOverlay('heat')"><span class="overlay-indicator"></span>COMM HEAT</button>
+        <button class="overlay-btn" id="ov-influence" onclick="toggleOrgOverlay('influence')"><span class="overlay-indicator"></span>INFLUENCE</button>
+      </div>
+      <button class="pivot-btn" onclick="switchView('graph')">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2"/><circle cx="2" cy="3" r="1.5"/><circle cx="14" cy="3" r="1.5"/><circle cx="2" cy="13" r="1.5"/><circle cx="14" cy="13" r="1.5"/><line x1="3.1" y1="4.1" x2="6.6" y2="6.6"/><line x1="12.9" y1="4.1" x2="9.4" y2="6.6"/><line x1="3.1" y1="11.9" x2="6.6" y2="9.4"/><line x1="12.9" y1="11.9" x2="9.4" y2="9.4"/></svg>
+        PIVOT TO GRAPH
+      </button>
+      <div id="org-scroll" style="width:100%;height:100%;overflow:auto;display:flex;justify-content:center;padding:28px 32px;">
+        <div class="org-wrap">
+          <svg class="org-lines" id="org-svg"></svg>
+          <!-- nodes injected -->
+        </div>
+      </div>
+    </div>
+
+    <!-- GRAPH VIEW -->
+    <div class="view-panel" id="graph-view">
+      <div class="overlay-controls">
+        <button class="overlay-btn active" id="gv-flow" onclick="toggleGraphOverlay('flow')"><span class="overlay-indicator"></span>INFLUENCE FLOW</button>
+        <button class="overlay-btn active" id="gv-sent" onclick="toggleGraphOverlay('sent')"><span class="overlay-indicator"></span>SENTIMENT</button>
+        <button class="overlay-btn" id="gv-gaps" onclick="toggleGraphOverlay('gaps')"><span class="overlay-indicator"></span>GAPS</button>
+      </div>
+
+      <button class="pivot-btn" onclick="switchView('org')">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5.5" y="1" width="5" height="3" rx=".5"/><rect x="1" y="10" width="4" height="3" rx=".5"/><rect x="6" y="10" width="4" height="3" rx=".5"/><rect x="11" y="10" width="4" height="3" rx=".5"/><line x1="8" y1="4" x2="8" y2="7"/><line x1="3" y1="7" x2="13" y2="7"/><line x1="3" y1="7" x2="3" y2="10"/><line x1="8" y1="7" x2="8" y2="10"/><line x1="13" y1="7" x2="13" y2="10"/></svg>
+        BACK TO HIERARCHY
+      </button>
+
+      <svg id="graph-svg">
+        <defs>
+          <filter id="glow2" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="4" result="cb"/>
+            <feMerge><feMergeNode in="cb"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="glow-strong2" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="8" result="cb"/>
+            <feMerge><feMergeNode in="cb"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="glow-faint" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="2" result="cb"/>
+            <feMerge><feMergeNode in="cb"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <g id="graph-pan-group">
+          <g id="edges-layer"></g>
+          <g id="nodes-layer"></g>
+        </g>
+      </svg>
+
+      <div class="legend">
+        <div class="legend-title">EDGE WEIGHT</div>
+        <div class="legend-item"><div class="legend-line" style="height:3px;background:var(--accent);opacity:.9;"></div>Strong</div>
+        <div class="legend-item"><div class="legend-line" style="height:2px;background:var(--accent);opacity:.4;"></div>Moderate</div>
+        <div class="legend-item"><div class="legend-line" style="height:1px;background:var(--text-muted);opacity:.3;border-top:1px dashed var(--text-muted);"></div>Inferred</div>
+        <div class="legend-title" style="margin-top:8px;">NODE ROLE</div>
+        <div class="legend-item"><div class="legend-dot" style="border-color:var(--accent3);background:rgba(246,173,85,.2);"></div>Econ. Buyer</div>
+        <div class="legend-item"><div class="legend-dot" style="border-color:var(--accent);background:rgba(99,179,237,.2);"></div>Champion</div>
+        <div class="legend-item"><div class="legend-dot" style="border-color:var(--red);background:rgba(252,129,129,.2);"></div>Blocker</div>
+        <div class="legend-item"><div class="legend-dot" style="border-color:var(--text-muted);background:rgba(255,255,255,.04);border-style:dashed;"></div>Unmapped</div>
+      </div>
+
+      <!-- DETAIL PANEL -->
+      <div class="detail-panel" id="detail-panel">
+        <div class="detail-header">
+          <div class="detail-avatar" id="dp-avatar"></div>
+          <div><div class="detail-name" id="dp-name"></div><div class="detail-role" id="dp-role"></div></div>
+        </div>
+        <div class="detail-row">
+          <span class="detail-key">SENTIMENT</span>
+          <span class="detail-val" id="dp-sentiment"></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-key">COMM FREQ</span>
+          <span class="detail-val" id="dp-freq"></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-key">CENTRALITY</span>
+          <div class="detail-bar"><div class="detail-bar-fill" id="dp-centrality-bar"></div></div>
+        </div>
+        <div class="detail-row">
+          <span class="detail-key">LAST CONTACT</span>
+          <span class="detail-val" id="dp-last"></span>
+        </div>
+        <div class="detail-row" id="dp-path-row" style="display:none;">
+          <span class="detail-key">REACH VIA</span>
+          <span class="detail-val" id="dp-path" style="color:var(--accent2);font-size:10px;"></span>
+        </div>
+      </div>
+
+      <!-- INSIGHTS -->
+      <div class="insight-panel">
+        <div class="insight-header"><div class="insight-dot"></div><div class="insight-title">AI INSIGHTS</div></div>
+        <div class="insight-item"><div class="insight-icon">⚠️</div><div>CFO unmapped. James has a direct path — suggest warm intro this week.</div></div>
+        <div class="insight-item"><div class="insight-icon">📉</div><div>David's sentiment declined 2 calls in a row. Exec escalation recommended.</div></div>
+        <div class="insight-item"><div class="insight-icon">🔥</div><div>Nina is your highest-centrality untapped node. 3 meetings unlocks Procurement + Legal.</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="status-bar">
+  <div class="status-item"><div class="status-dot" style="background:var(--green)"></div>7 contacts mapped</div>
+  <div class="status-item"><div class="status-dot" style="background:var(--red)"></div>3 gaps identified</div>
+  <div class="status-item"><div class="status-dot" style="background:var(--accent)"></div>Last sync: 2h ago</div>
+  <div class="status-item" style="margin-left:auto;"><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-muted);">NEXUS v0.2 · PROTOTYPE</span></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════════════════
+const CONTACTS = {
+  sarah: { name:'Sarah Mwangi',    role:'CFO / Economic Buyer',          color:'#f6ad55', initials:'SM', sentiment:'▲ Positive',      sentColor:'#68d391', freq:'4× / mo', centrality:.91, last:'3 days ago',  roleTag:'ECON.BUYER' },
+  james: { name:'James Thornton',  role:'VP Engineering / Champion',     color:'#63b3ed', initials:'JT', sentiment:'▲ Very Positive',  sentColor:'#68d391', freq:'8× / mo', centrality:.87, last:'1 day ago',   roleTag:'CHAMPION'  },
+  priya: { name:'Priya Kapoor',    role:'Head of Security / Tech Eval',  color:'#b794f4', initials:'PK', sentiment:'→ Neutral',        sentColor:'#f6ad55', freq:'5× / mo', centrality:.74, last:'5 days ago',  roleTag:'TECH EVAL' },
+  david: { name:'David Hartmann',  role:'Dir. Infrastructure / Blocker', color:'#fc8181', initials:'DH', sentiment:'▼ Declining',      sentColor:'#fc8181', freq:'2× / mo', centrality:.66, last:'12 days ago', roleTag:'BLOCKER'   },
+  nina:  { name:'Nina Rossi',      role:'Chief of Staff / Coach',        color:'#4fd1c5', initials:'NR', sentiment:'▲ Positive',      sentColor:'#68d391', freq:'3× / mo', centrality:.82, last:'4 days ago',  roleTag:'COACH'     },
+  mike:  { name:'Mike Chen',       role:'Legal Counsel',                 color:'#8a9bac', initials:'MC', sentiment:'— Unknown',        sentColor:'#5a6a7a', freq:'1× / mo', centrality:.41, last:'21 days ago', roleTag:'LEGAL'     },
+  elena: { name:'Elena Vasquez',   role:'Procurement Manager',           color:'#8a9bac', initials:'EV', sentiment:'— Unknown',        sentColor:'#5a6a7a', freq:'0× / mo', centrality:.38, last:'Never',       roleTag:'PROCURE'   },
+  cfo:   { name:'CFO (Unmapped)',  role:'C-Suite — No Contact',          color:'#5a6a7a', initials:'?',  sentiment:'— N/A',            sentColor:'#5a6a7a', freq:'0×',      centrality:.95, last:'Never',       roleTag:'UNMAPPED'  },
+};
+
+// ═══════════════════════════════════════════════════════════
+//  ORG CHART
+// ═══════════════════════════════════════════════════════════
+const ORG_NODES = [
+  { id:'sarah', x:410, y:20  },
+  { id:'nina',  x:410, y:140 },
+  { id:'james', x:210, y:265 },
+  { id:'priya', x:410, y:265 },
+  { id:'david', x:610, y:265 },
+  { id:'mike',  x:210, y:390 },
+  { id:'elena', x:610, y:390 },
+];
+const ORG_EDGES = [['sarah','nina'],['nina','james'],['nina','priya'],['nina','david'],['james','mike'],['david','elena']];
+const HEAT = { sarah:.70, james:.95, priya:.65, david:.25, nina:.50, mike:.12, elena:.02 };
+
+function buildOrg() {
+  const wrap = document.querySelector('.org-wrap');
+  const svg  = document.getElementById('org-svg');
+
+  let svgContent = '';
+  ORG_EDGES.forEach(([a,b]) => {
+    const na = ORG_NODES.find(n=>n.id===a), nb = ORG_NODES.find(n=>n.id===b);
+    svgContent += `<path d="M${na.x},${na.y+64} C${na.x},${(na.y+64+nb.y)/2} ${nb.x},${(na.y+64+nb.y)/2} ${nb.x},${nb.y}" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="1.5"/>`;
+  });
+  svg.innerHTML = svgContent;
+
+  ORG_NODES.forEach(node => {
+    const c = CONTACTS[node.id], h = HEAT[node.id], sc = c.sentColor;
+    const div = document.createElement('div');
+    div.className='org-node'; div.id='on-'+node.id;
+    div.style.left=node.x+'px'; div.style.top=node.y+'px';
+    div.innerHTML=`
+      <div class="org-card" onclick="focusNode('${node.id}')">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;border-radius:10px 10px 0 0;background:${c.color}"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+          <div class="avatar" style="width:22px;height:22px;font-size:9px;background:${c.color}22;color:${c.color};">${c.initials}</div>
+          <div class="org-name">${c.name.split(' ')[0]} ${c.name.split(' ')[1][0]}.</div>
+        </div>
+        <div class="org-title">${c.role}</div>
+        <div class="org-metrics">
+          <div class="metric-pill" id="os-${node.id}" style="background:${sc}18;color:${sc};border:1px solid ${sc}33;">● <span style="font-size:9px">${c.sentiment.split(' ')[0]}</span></div>
+        </div>
+        <div class="heat-bar" id="oh-${node.id}">
+          <div class="heat-fill" style="width:${h*100}%;background:${h>.5?'#63b3ed':h>.2?'#f6ad55':'#fc8181'}"></div>
+        </div>
+      </div>`;
+    wrap.appendChild(div);
+  });
+}
+
+let orgOverlays = new Set(['sentiment']);
+function toggleOrgOverlay(type) {
+  const btn = document.getElementById('ov-'+type);
+  btn.classList.toggle('active');
+  orgOverlays.has(type) ? orgOverlays.delete(type) : orgOverlays.add(type);
+  ORG_NODES.forEach(n => {
+    const hs = document.getElementById('oh-'+n.id);
+    const ss = document.getElementById('os-'+n.id);
+    if(hs) hs.style.display = orgOverlays.has('heat') ? 'block' : 'none';
+    if(ss) ss.style.display = orgOverlays.has('sentiment') ? 'flex' : 'none';
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GRAPH PHYSICS ENGINE
+// ═══════════════════════════════════════════════════════════
+
+// Initial node positions (relative to graph center)
+let nodes = [
+  { id:'sarah', x:  0,   y:-160, r:32, vx:0, vy:0, fx:null, fy:null },
+  { id:'james', x:-200,  y: -40, r:29, vx:0, vy:0, fx:null, fy:null },
+  { id:'nina',  x:  0,   y:  30, r:27, vx:0, vy:0, fx:null, fy:null },
+  { id:'priya', x: 170,  y:-80,  r:24, vx:0, vy:0, fx:null, fy:null },
+  { id:'david', x: 200,  y: 80,  r:22, vx:0, vy:0, fx:null, fy:null },
+  { id:'mike',  x:-240,  y: 140, r:18, vx:0, vy:0, fx:null, fy:null },
+  { id:'elena', x: 120,  y: 190, r:17, vx:0, vy:0, fx:null, fy:null },
+  { id:'cfo',   x:-130,  y:-200, r:20, vx:0, vy:0, fx:null, fy:null },
+];
+
+const EDGES = [
+  { s:'sarah', t:'nina',  w:0.90 },
+  { s:'sarah', t:'james', w:0.50 },
+  { s:'sarah', t:'priya', w:0.40 },
+  { s:'sarah', t:'cfo',   w:0.25, inferred:true },
+  { s:'nina',  t:'james', w:0.85 },
+  { s:'nina',  t:'priya', w:0.70 },
+  { s:'nina',  t:'david', w:0.60 },
+  { s:'nina',  t:'elena', w:0.50 },
+  { s:'nina',  t:'cfo',   w:0.20, inferred:true },
+  { s:'james', t:'priya', w:0.75 },
+  { s:'james', t:'mike',  w:0.40 },
+  { s:'david', t:'priya', w:0.45 },
+  { s:'david', t:'elena', w:0.60 },
+];
+
+// Physics params
+const K_SPRING   = 0.03;
+const K_REPULSE  = 5000;
+const K_DAMP     = 0.82;
+const IDEAL_LEN  = (edge) => {
+  const base = 200;
+  return base / (edge.w + 0.2);
+};
+const ITER_PER_FRAME = 3;
+
+let selectedNode = 'sarah';
+let animFrame = null;
+let panG, edgesL, nodesL;
+let svgW = 0, svgH = 0;
+let panX = 0, panY = 0;   // target pan offset
+let curPanX = 0, curPanY = 0; // smoothed
+let graphBuilt = false;
+let graphOverlays = new Set(['flow','sent']);
+
+function getNode(id) { return nodes.find(n=>n.id===id); }
+
+function physicsStep() {
+  const N = nodes.length;
+  for(let iter=0; iter<ITER_PER_FRAME; iter++) {
+    // Repulsion
+    for(let i=0;i<N;i++) {
+      for(let j=i+1;j<N;j++) {
+        const a=nodes[i], b=nodes[j];
+        const dx=b.x-a.x, dy=b.y-a.y;
+        const dist=Math.sqrt(dx*dx+dy*dy)||1;
+        const force=K_REPULSE/(dist*dist);
+        const fx=force*dx/dist, fy=force*dy/dist;
+        if(!a.fx) { a.vx-=fx; a.vy-=fy; }
+        if(!b.fx) { b.vx+=fx; b.vy+=fy; }
+      }
+    }
+    // Springs
+    EDGES.forEach(e => {
+      const a=getNode(e.s), b=getNode(e.t);
+      if(!a||!b) return;
+      const dx=b.x-a.x, dy=b.y-a.y;
+      const dist=Math.sqrt(dx*dx+dy*dy)||1;
+      const ideal=IDEAL_LEN(e);
+      const force=K_SPRING*(dist-ideal);
+      const fx=force*dx/dist, fy=force*dy/dist;
+      if(!a.fx) { a.vx+=fx; a.vy+=fy; }
+      if(!b.fx) { b.vx-=fx; b.vy-=fy; }
+    });
+    // Integrate
+    nodes.forEach(n => {
+      if(n.fx!==null) { n.x=n.fx; n.y=n.fy; return; }
+      n.vx*=K_DAMP; n.vy*=K_DAMP;
+      n.x+=n.vx; n.y+=n.vy;
+    });
+  }
+}
+
+function renderGraph() {
+  const cx = svgW/2 + curPanX;
+  const cy = svgH/2 + curPanY;
+
+  // Draw edges
+  let edgeHtml = '';
+  EDGES.forEach(e => {
+    const a=getNode(e.s), b=getNode(e.t);
+    if(!a||!b) return;
+    const ax=cx+a.x, ay=cy+a.y, bx=cx+b.x, by=cy+b.y;
+    const dx=bx-ax, dy=by-ay, dist=Math.sqrt(dx*dx+dy*dy)||1;
+    const x1=ax+(dx/dist)*a.r, y1=ay+(dy/dist)*a.r;
+    const x2=bx-(dx/dist)*b.r, y2=by-(dy/dist)*b.r;
+
+    const isSel = e.s===selectedNode||e.t===selectedNode;
+    const isInf = e.inferred;
+    const color = isSel ? (isInf?'#f6ad55':'#63b3ed') : (isInf?'#3a4a5a':'#2a3a4e');
+    const sw = isSel ? e.w*4+1 : e.w*2+0.5;
+    const op = isSel ? 1 : 0.4;
+    const dash = isInf ? 'stroke-dasharray="5 4"' : '';
+    const mid_x = (x1+x2)/2, mid_y = (y1+y2)/2;
+
+    edgeHtml += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"
+      stroke="${color}" stroke-width="${sw.toFixed(1)}" opacity="${op}" ${dash} stroke-linecap="round"/>`;
+
+    // Weight label on selected edges
+    if(isSel && graphOverlays.has('flow')) {
+      edgeHtml += `<text x="${mid_x.toFixed(1)}" y="${mid_y.toFixed(1)}" text-anchor="middle" dominant-baseline="middle"
+        font-family="DM Mono,monospace" font-size="9" fill="${color}" opacity="0.8">${Math.round(e.w*100)}%</text>`;
+    }
+  });
+  edgesL.innerHTML = edgeHtml;
+
+  // Draw nodes
+  let nodeHtml = '';
+  nodes.forEach(n => {
+    const c = CONTACTS[n.id];
+    const isGap = n.id==='cfo';
+    const isSel = n.id===selectedNode;
+    const nx = cx+n.x, ny = cy+n.y;
+    const col = c.color;
+    const sc = c.sentColor;
+    const filter = isSel ? 'url(#glow-strong2)' : (isGap ? '' : 'url(#glow-faint)');
+    const ringR = n.r + (isSel ? 7 : 4);
+
+    nodeHtml += `<g data-id="${n.id}" class="gnode" style="cursor:pointer;" transform="translate(${nx.toFixed(1)},${ny.toFixed(1)})">`;
+
+    // Selection ring
+    if(isSel) {
+      nodeHtml += `<circle r="${ringR}" fill="none" stroke="${col}" stroke-width="1.5" opacity="0.5"/>`;
+      nodeHtml += `<circle r="${ringR+4}" fill="none" stroke="${col}" stroke-width="0.5" opacity="0.2"/>`;
+    }
+
+    // Gap dashed ring
+    if(isGap) {
+      nodeHtml += `<circle r="${n.r+8}" fill="none" stroke="#fc8181" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>`;
+    }
+
+    // Sentiment ring (inner)
+    if(!isGap && graphOverlays.has('sent')) {
+      nodeHtml += `<circle r="${n.r-4}" fill="${sc}" opacity="0.12"/>`;
+    }
+
+    // Main circle
+    nodeHtml += `<circle r="${n.r}" fill="${col}" fill-opacity="${isGap?0.05:0.14}" stroke="${col}" stroke-width="${isSel?2:1.5}" ${filter?`filter="${filter}"`:''} />`;
+
+    // Initials
+    nodeHtml += `<text text-anchor="middle" dominant-baseline="middle" font-family="Syne,sans-serif" font-weight="700" font-size="${n.r*.55}" fill="${col}">${c.initials}</text>`;
+
+    // Name label
+    nodeHtml += `<text y="${n.r+13}" text-anchor="middle" font-family="DM Sans,sans-serif" font-weight="${isSel?500:400}" font-size="11" fill="${isSel?'#e8edf2':'#8a9bac'}">${c.name.split(' ')[0]}</text>`;
+
+    // Role tag
+    nodeHtml += `<text y="${n.r+25}" text-anchor="middle" font-family="DM Mono,monospace" font-size="8.5" fill="${isGap?'#fc8181':col}" opacity="${isSel?0.9:0.6}">${c.roleTag}</text>`;
+
+    // Centrality bubble on selected
+    if(isSel && graphOverlays.has('flow')) {
+      nodeHtml += `<g transform="translate(${n.r-2},${-n.r+2})">
+        <circle r="9" fill="${col}" fill-opacity="0.2" stroke="${col}" stroke-width="1"/>
+        <text text-anchor="middle" dominant-baseline="middle" font-family="DM Mono,monospace" font-size="7.5" fill="${col}">${Math.round(c.centrality*100)}</text>
+      </g>`;
+    }
+
+    nodeHtml += `</g>`;
+  });
+  nodesL.innerHTML = nodeHtml;
+
+  // Re-attach click listeners
+  document.querySelectorAll('.gnode').forEach(g => {
+    g.addEventListener('click', () => focusNode(g.dataset.id));
+  });
+}
+
+function smoothPan() {
+  curPanX += (panX - curPanX) * 0.10;
+  curPanY += (panY - curPanY) * 0.10;
+}
+
+function loop() {
+  physicsStep();
+  smoothPan();
+  renderGraph();
+  animFrame = requestAnimationFrame(loop);
+}
+
+function buildGraph() {
+  if(graphBuilt) return;
+  graphBuilt = true;
+
+  const svg = document.getElementById('graph-svg');
+  svgW = svg.clientWidth;
+  svgH = svg.clientHeight;
+  panG   = document.getElementById('graph-pan-group');
+  edgesL = document.getElementById('edges-layer');
+  nodesL = document.getElementById('nodes-layer');
+
+  // Seed positions relative to center
+  nodes.forEach(n => { /* already set */ });
+
+  loop();
+}
+
+function stopGraph() {
+  if(animFrame) { cancelAnimationFrame(animFrame); animFrame=null; }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  NODE FOCUS — centres graph on selected node
+// ═══════════════════════════════════════════════════════════
+function focusNode(id) {
+  selectedNode = id;
+
+  // Sidebar highlight
+  document.querySelectorAll('.contact-item').forEach(ci => ci.classList.remove('selected'));
+  const si = document.getElementById('si-'+id);
+  if(si) si.classList.add('selected');
+
+  // If in graph view: pan to node
+  if(currentView === 'graph') {
+    const n = getNode(id);
+    if(n) {
+      // Pan so this node is centred
+      panX = -n.x;
+      panY = -n.y;
+    }
+    updateDetailPanel(id);
+  }
+}
+
+function updateDetailPanel(id) {
+  const c = CONTACTS[id];
+  document.getElementById('dp-avatar').textContent = c.initials;
+  document.getElementById('dp-avatar').style.background = c.color+'22';
+  document.getElementById('dp-avatar').style.color = c.color;
+  document.getElementById('dp-name').textContent = c.name;
+  document.getElementById('dp-role').textContent = c.role;
+  document.getElementById('dp-sentiment').textContent = c.sentiment;
+  document.getElementById('dp-sentiment').style.color = c.sentColor;
+  document.getElementById('dp-freq').textContent = c.freq;
+  document.getElementById('dp-last').textContent = c.last;
+  const bar = document.getElementById('dp-centrality-bar');
+  bar.style.width = (c.centrality*100)+'%';
+  bar.style.background = c.centrality > .8 ? '#63b3ed' : c.centrality > .6 ? '#f6ad55' : '#fc8181';
+
+  // Influence path for unmapped
+  const pathRow = document.getElementById('dp-path-row');
+  if(id === 'cfo') {
+    pathRow.style.display = 'flex';
+    document.getElementById('dp-path').textContent = 'James → Sarah → CFO';
+  } else { pathRow.style.display = 'none'; }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DRAG TO PAN
+// ═══════════════════════════════════════════════════════════
+let isDragging=false, dragStartX=0, dragStartY=0, dragStartPanX=0, dragStartPanY=0;
+
+document.getElementById('graph-svg').addEventListener('mousedown', e => {
+  if(e.target.closest('.gnode')) return;
+  isDragging=true;
+  dragStartX=e.clientX; dragStartY=e.clientY;
+  dragStartPanX=panX; dragStartPanY=panY;
+});
+document.addEventListener('mousemove', e => {
+  if(!isDragging) return;
+  panX = dragStartPanX + (e.clientX-dragStartX);
+  panY = dragStartPanY + (e.clientY-dragStartY);
+  curPanX = panX; curPanY = panY; // instant when dragging
+});
+document.addEventListener('mouseup', () => isDragging=false);
+
+// ═══════════════════════════════════════════════════════════
+//  GRAPH OVERLAYS
+// ═══════════════════════════════════════════════════════════
+function toggleGraphOverlay(type) {
+  const btn = document.getElementById('gv-'+type);
+  btn.classList.toggle('active');
+  graphOverlays.has(type) ? graphOverlays.delete(type) : graphOverlays.add(type);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  VIEW SWITCH
+// ═══════════════════════════════════════════════════════════
+let currentView = 'org';
+
+function switchView(v) {
+  currentView = v;
+  document.querySelectorAll('.view-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById(v+'-view').classList.add('active');
+  document.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('btn-'+v).classList.add('active');
+
+  if(v==='graph') {
+    // slight delay so panel is visible and has dimensions
+    setTimeout(() => {
+      const svg = document.getElementById('graph-svg');
+      svgW = svg.clientWidth;
+      svgH = svg.clientHeight;
+      buildGraph();
+      updateDetailPanel(selectedNode);
+      // start animation if not running
+      if(!animFrame) loop();
+    }, 50);
+  } else {
+    // keep physics running in background but stop RAF to save CPU
+    stopGraph();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+buildOrg();
+updateDetailPanel('sarah');
+</script>
+</body>
+</html>
